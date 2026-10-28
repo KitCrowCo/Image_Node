@@ -1,0 +1,39 @@
+services:
+  image_node:
+    build: .
+    image: custom-flux2-node:local  # Forces compose to rely on local cache
+    container_name: image_node
+    ports:
+      - "7860:8000"
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./main.py:/app/main.py:ro
+      - ./pipeline_flux2_klein_inpaint.py:/app/pipeline_flux2_klein_inpaint.py:ro
+      - ./local_overrides/:/local_overrides
+      - ${IMAGE_MODELS}:/app/models/
+      - ~/docker-shared/ai-image/outputs:/app/outputs
+      - ~/docker-shared/ai-image/prompts:/app/shared_vault/embeds/jobs
+      - ./video.py:/app/video.py:ro                                    # required: main.py imports it
+      - ~/docker-shared/ai-image/t5cache:/app/shared_vault/embeds/t5    # optional: encoded prompts survive rebuilds
+    environment:
+      # optional, shown with their defaults:
+      # - DEFAULT_IMAGE_MODEL=flux-2-klein-9b-Q6_K.gguf   # loaded when an image request names no model while a video model is in memory
+      # - VIDEO_T5_DEVICE=cpu                             # where the 9.5 GB T5 encoder runs (once per new prompt; cached)
+      # - SDPA_CHUNK_ABOVE_GB=8                           # attention larger than this is computed in exact query chunks
+      # - SDPA_CHUNK_GB=1
+      - PYTORCH_ALLOC_CONF=expandable_segments:True
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0
+      # ROCm/PyTorch specific environment flags
+      - ROCM_PATH=/opt/rocm
+      - HF_HUB_OFFLINE=1
+      - PYTORCH_ROCM_ARCH=gfx1150
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+#    privileged: true # Allows deeper hardware/memory mapping access
+    group_add:
+      - "992"
+      - "44"

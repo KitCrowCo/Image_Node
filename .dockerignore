@@ -1,0 +1,10 @@
+# .dockerignore
+__pycache__/
+*.safetensors
+*.ckpt
+*.bin
+models/
+outputs/
+local_overrides/
+.venv/
+venv/
